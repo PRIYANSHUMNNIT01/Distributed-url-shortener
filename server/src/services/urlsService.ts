@@ -1,31 +1,115 @@
 import { generateUniqueToken } from '../config/zookeeper';
-import { get, set, extendTTL, RedisExpirationMode } from '../config/redis';
+import {
+  get,
+  set,
+  extendTTL,
+  RedisExpirationMode,
+} from '../config/redis';
+
 import { IUrl } from '../models/Url';
 import { isValidUrl } from '../utils';
-import { create, findAll, findOne } from '../repositories/urlsRepository';
+
+import {
+  create,
+  findAll,
+  findOne,
+  incrementClicks,
+} from '../repositories/urlsRepository';
+
+const geoip = require('geoip-lite');
+import { UAParser } from 'ua-parser-js';
+
+import {
+  createAnalytics,
+} from '../repositories/analyticsRepository';
 
 const ONE_MINUTE_IN_SECONDS = 60;
 
-// Get all shortened URLs
-export const getAllUrls = async (): Promise<IUrl[]> => await findAll();
+// ====================
+// Get all URLs
+// ====================
 
-// Get a specific shortened URL by its key
+export const getAllUrls = async (): Promise<IUrl[]> => {
+  return await findAll();
+};
+
+// ====================
+// Save click analytics
+// ====================
+
+export const saveClickAnalytics = async (
+  shortenUrlKey: string,
+  ip: string,
+  userAgent: string
+): Promise<void> => {
+  try {
+    const geo = geoip.lookup(ip);
+
+    const parser = new UAParser(userAgent);
+
+    await createAnalytics({
+      shortenUrlKey,
+
+      country:
+        geo?.country || 'Unknown',
+
+      region:
+        geo?.region || 'Unknown',
+
+      city:
+        geo?.city || 'Unknown',
+
+      browser:
+        parser.getBrowser().name ||
+        'Unknown',
+
+      device:
+        parser.getDevice().type ||
+        'Desktop',
+
+      ip,
+
+      createdAt: new Date(),
+    });
+  } catch (error) {
+    console.error(
+      'Analytics save failed:',
+      error
+    );
+  }
+};
+// ====================
+// Get URL by key
+// ====================
+
 export const getUrlByShortenUrlKey = async (
   shortenUrlKey: string
 ): Promise<string | null> => {
-  // Try to get the original URL from Redis cache
-  const cachedOriginalUrl = await get(shortenUrlKey);
-  if (cachedOriginalUrl) {
-    // Extend TTL
-    await extendTTL(shortenUrlKey, ONE_MINUTE_IN_SECONDS);
+  const cachedOriginalUrl =
+    await get(shortenUrlKey);
 
-    return cachedOriginalUrl; // Return the cached original URL
+  if (cachedOriginalUrl) {
+    await incrementClicks(
+      shortenUrlKey
+    );
+
+    await extendTTL(
+      shortenUrlKey,
+      ONE_MINUTE_IN_SECONDS
+    );
+
+    return cachedOriginalUrl;
   }
 
-  // If not in cache, retrieve from database
-  const savedUrl = await findOne({ shortenUrlKey });
+  const savedUrl = await findOne({
+    shortenUrlKey,
+  });
+
   if (savedUrl) {
-    // Cache the original URL created by its shorten URL key
+    await incrementClicks(
+      shortenUrlKey
+    );
+
     await set(
       savedUrl.shortenUrlKey,
       savedUrl.originalUrl,
@@ -33,45 +117,53 @@ export const getUrlByShortenUrlKey = async (
       ONE_MINUTE_IN_SECONDS
     );
 
-    return savedUrl.originalUrl; // Return the saved original URL
+    return savedUrl.originalUrl;
   }
 
-  return null; // Return null if nothing found
+  return null;
 };
 
-// Create a new shortened URL
+// ====================
+// Create shortened URL
+// ====================
+
 export const createShortenedUrl = async (
-  originalUrl: string
+  originalUrl: string,
+  userId: string | null = null
 ): Promise<string | null> => {
-  // Check if URL is valid
   if (!isValidUrl(originalUrl)) {
     return null;
   }
 
-  // Retrieve from database
-  const savedUrl = await findOne({ originalUrl });
-  if (savedUrl) {
-    return savedUrl.shortenUrlKey; // Return the saved shortened URL key
-  }
-
-  // If not in database, generate a new shortened URL key and save it
-  const shortenUrlKey = await generateUniqueToken();
-  if (shortenUrlKey) {
-    const newUrl = await create({
+  const existingUrl =
+    await findOne({
       originalUrl,
-      shortenUrlKey,
     });
 
-    // Cache the original URL created by its shorten URL key
-    await set(
-      newUrl.shortenUrlKey,
-      newUrl.originalUrl,
-      RedisExpirationMode.EX,
-      ONE_MINUTE_IN_SECONDS
-    );
-
-    return newUrl.shortenUrlKey; // Return shortened URL key
+  if (existingUrl) {
+    return existingUrl.shortenUrlKey;
   }
 
-  return null; // Return null if token generation failed
+  const shortenUrlKey =
+    await generateUniqueToken();
+
+  if (!shortenUrlKey) {
+    return null;
+  }
+
+  const newUrl = await create({
+    originalUrl,
+    shortenUrlKey,
+    userId,
+    analyticsEnabled: !!userId,
+  });
+
+  await set(
+    newUrl.shortenUrlKey,
+    newUrl.originalUrl,
+    RedisExpirationMode.EX,
+    ONE_MINUTE_IN_SECONDS
+  );
+
+  return newUrl.shortenUrlKey;
 };
