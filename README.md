@@ -1,8 +1,8 @@
-# 🚀 Scalable URL Shortener with Analytics
+# 🚀 Scalable Distributed URL Shortener
 
-A distributed URL shortening platform built using **React, Fastify, MongoDB, Redis, Docker, Nginx, JWT Authentication, and ZooKeeper**.
+A production-oriented distributed URL shortening platform built using **React, Fastify, MongoDB, Redis, Docker, Nginx, JWT Authentication, ZooKeeper, and Rate Limiting**.
 
-The system provides secure URL shortening, distributed token generation, visitor analytics, caching, authentication, and load-balanced backend services.
+The platform provides secure URL shortening, distributed token generation, analytics tracking, caching, authentication, load balancing, and protection against API abuse.
 
 ---
 
@@ -18,58 +18,14 @@ The system provides secure URL shortening, distributed token generation, visitor
 * 📈 Click Tracking
 * 🌍 Visitor Location Tracking
 * ⚡ Redis Caching
+* 🚦 API Rate Limiting
 * 🐳 Dockerized Deployment
 * ⚖️ Nginx Load Balancing
-* 🦓 ZooKeeper Token Generation
+* 🦓 ZooKeeper-Based Token Generation
 
 ---
 
-# 🏗️ URL Shortening Strategy
-
-Unlike traditional URL shorteners that use Base62 encoding of database IDs, this project uses **ZooKeeper-based distributed token generation**.
-
-### Token Characteristics
-
-* Character Set: `A-Z`, `a-z`, `0-9`
-* Token Length: `6 Characters`
-* Total Possible Combinations:
-
-```text
-62^6 = 56,800,235,584
-≈ 56.8 Billion URLs
-```
-
-### Example
-
-Original URL
-
-```text
-https://leetcode.com/problems/two-sum
-```
-
-Generated Token
-
-```text
-tyDLAj
-```
-
-Short URL
-
-```text
-http://localhost/tyDLAj
-```
-
-### Advantages
-
-* ✅ Collision Free
-* ✅ No Sequential IDs
-* ✅ Distributed System Friendly
-* ✅ Horizontally Scalable
-* ✅ Difficult to Predict URLs
-
----
-
-# 🏛️ System Architecture
+# 🏗️ System Architecture
 
 ```text
                     Client Browser
@@ -103,6 +59,52 @@ http://localhost/tyDLAj
 
 ---
 
+# 🔗 URL Shortening Strategy
+
+Unlike traditional URL shorteners that rely on Base62 encoding of database IDs, this system uses ZooKeeper-assisted distributed token generation.
+
+### Token Characteristics
+
+* Character Set: `A-Z`, `a-z`, `0-9`
+* Token Length: `6 Characters`
+
+### Total Possible URLs
+
+```text
+62^6 = 56,800,235,584
+≈ 56.8 Billion URLs
+```
+
+### Example
+
+Original URL
+
+```text
+https://leetcode.com/problems/two-sum
+```
+
+Generated Token
+
+```text
+tyDLAj
+```
+
+Short URL
+
+```text
+http://localhost/tyDLAj
+```
+
+### Benefits
+
+* ✅ Collision Resistant
+* ✅ No Sequential IDs
+* ✅ Horizontally Scalable
+* ✅ Distributed-System Friendly
+* ✅ Difficult to Predict
+
+---
+
 # 🔄 URL Creation Flow
 
 ```text
@@ -114,13 +116,13 @@ Validate URL
  ↓
 Check Existing URL
  ↓
-Generate Unique Token
+Generate Distributed Token
 (ZooKeeper)
  ↓
 Store URL Mapping
 (MongoDB)
  ↓
-Store Cache Entry
+Cache URL Mapping
 (Redis)
  ↓
 Return Short URL
@@ -154,12 +156,12 @@ Return URL     MongoDB
 
 # 📊 Analytics Dashboard
 
-The platform tracks detailed visitor information for every shortened URL.
+The platform collects analytics for every shortened URL.
 
 ### Visitor Information
 
 * 🌍 Country
-* 🗺️ State / Region
+* 🗺️ Region / State
 * 🏙️ City
 * 🌐 Browser
 * 📱 Device Type
@@ -172,11 +174,11 @@ The platform tracks detailed visitor information for every shortened URL.
 * 🎯 Unique Visitors
 * 🌐 Unique Browsers
 * 📱 Unique Devices
-* 📈 Click Count
+* 📈 Total Clicks
 
 ---
 
-# 🔐 Authentication Flow
+# 🔐 Authentication
 
 ### Registration
 
@@ -209,16 +211,9 @@ Store in Browser
 
 ---
 
-# ⚡ Redis Caching Strategy
+# ⚡ Redis Caching
 
 Redis stores frequently accessed URL mappings.
-
-### Benefits
-
-* Faster URL lookups
-* Reduced MongoDB load
-* Improved response times
-* Better scalability
 
 ### Cache Flow
 
@@ -238,13 +233,53 @@ Store in Redis
 Return URL
 ```
 
+### Benefits
+
+* Faster URL Resolution
+* Reduced Database Load
+* Lower Response Latency
+* Improved Scalability
+
+---
+
+# 🚦 Rate Limiting
+
+API rate limiting is implemented using **Fastify Rate Limit** to protect backend services from abuse and excessive traffic.
+
+### Current Limits
+
+| Endpoint                | Limit                      |
+| ----------------------- | -------------------------- |
+| POST /api/urls          | 20 requests/minute per IP  |
+| All Other API Endpoints | 100 requests/minute per IP |
+
+### Example
+
+```text
+POST /api/urls
+
+Allowed:
+20 requests/minute/IP
+
+Exceeded:
+HTTP 429 Too Many Requests
+```
+
+### Benefits
+
+* 🛡️ Prevents Abuse
+* 🔐 Protects Backend Resources
+* ⚡ Reduces Unnecessary Load
+* 📈 Improves Stability
+* 🌐 Supports Scalable Systems
+
 ---
 
 # ⚖️ Load Balancing
 
-Nginx distributes incoming traffic among multiple Fastify backend instances using **Round Robin Load Balancing**.
+Nginx distributes incoming requests across multiple Fastify backend instances using Round Robin Load Balancing.
 
-Example:
+### Example
 
 ```text
 Request 1 → Server-1
@@ -262,46 +297,25 @@ Request 4 → Server-1
 
 ---
 
-# 🦓 ZooKeeper Integration
+# 🦓 ZooKeeper Coordination
 
-ZooKeeper is used for distributed coordination and unique token generation.
+ZooKeeper is used to coordinate distributed token generation.
 
-When multiple backend instances generate URLs simultaneously:
+Example:
 
 ```text
 Server-1 → tyDLAj
 Server-2 → tyDLAj
 ```
 
-ZooKeeper guarantees:
+ZooKeeper ensures:
 
 ```text
 Only one token reservation succeeds.
 The other server generates a new token.
 ```
 
-This prevents collisions across multiple servers.
-
----
-
-# 🚦 Planned Rate Limiting Strategy
-
-To protect the system from abuse and excessive resource consumption, Redis-based distributed rate limiting is planned.
-
-| Endpoint                | Limit                      |
-| ----------------------- | -------------------------- |
-| POST /api/urls          | 10 requests/minute per IP  |
-| GET /:shortUrl          | 100 requests/minute per IP |
-| POST /api/auth/login    | 5 requests/minute per IP   |
-| POST /api/auth/register | 3 requests/minute per IP   |
-
-### Benefits
-
-* 🛡️ Prevents Abuse
-* 🔐 Protects Authentication Endpoints
-* 📈 Improves Stability
-* ⚡ Reduces Unnecessary Load
-* 🌐 Works Across Multiple Backend Instances
+This prevents token collisions across backend instances.
 
 ---
 
@@ -355,8 +369,8 @@ To protect the system from abuse and excessive resource consumption, Redis-based
 Clone Repository
 
 ```bash
-git clone <repository-url>
-cd url-shortener
+git clone https://github.com/PRIYANSHUMNNIT01/Distributed-url-shortener.git
+cd Distributed-url-shortener
 ```
 
 Start Services
@@ -368,8 +382,8 @@ docker compose up --build
 Application URLs
 
 ```text
-Frontend: http://localhost
-Backend : http://localhost/api
+Frontend : http://localhost
+Backend  : http://localhost/api
 ```
 
 ---
@@ -377,13 +391,14 @@ Backend : http://localhost/api
 # 📈 Scalability Highlights
 
 * Multiple Fastify Backend Instances
-* Redis Distributed Cache
-* Nginx Load Balancing
-* ZooKeeper Coordination
+* Nginx Load Balancer
+* Redis Caching Layer
+* ZooKeeper Distributed Coordination
 * MongoDB Persistent Storage
+* API Rate Limiting
 * Dockerized Infrastructure
 
-The architecture is designed to scale horizontally by adding additional backend instances behind Nginx.
+The system is designed to scale horizontally by adding additional Fastify instances behind Nginx.
 
 ---
 
@@ -391,10 +406,12 @@ The architecture is designed to scale horizontally by adding additional backend 
 
 * 📱 QR Code Generation
 * ✏️ Custom Short URLs
-* 📊 Analytics Charts
-* ☁️ Cloud Deployment
+* 📊 Interactive Analytics Charts
+* ☁️ Cloud Deployment (AWS/GCP)
 * 📧 Email Verification
 * 🔑 Password Reset
-* 🌎 Country-wise Traffic Reports
+* 🌎 Country-Wise Traffic Reports
 * 🛡️ Cloudflare Integration
-* ⏳ Custom URL Expiration Policies
+* ⏳ Custom Expiration Policies
+* 🚦 Redis-Based Distributed Rate Limiting
+* 📈 Prometheus & Grafana Monitoring
