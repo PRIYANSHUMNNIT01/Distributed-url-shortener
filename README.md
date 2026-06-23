@@ -1,20 +1,186 @@
-# Scalable URL Shortener App
+#  Scalable URL Shortener
 
+A distributed URL shortening platform built with React, Fastify, MongoDB, Redis, Docker, Nginx, JWT Authentication, and ZooKeeper.
 
-## Stack
+## ✨ Features
 
-This project uses the following stack:
+- 🔗 URL Shortening
+- 🔐 User Authentication (JWT)
+- 📊 Analytics Dashboard
+- 👥 Unique Visitor Tracking
+- 🌐 Browser Detection
+- 📱 Device Detection
+- 📈 Click Tracking
+- ⚡ Redis Caching
+- 🐳 Dockerized Deployment
+- ⚖️ Nginx Load Balancing
+- 🦓 ZooKeeper Token Generation
 
-- **React** (Frontend)
-- **Node.js** (Backend)
-- **Redis** (Cache & TTL Management)
-- **MongoDB** (Database)
-- **Apache ZooKeeper** (Token Generation)
-- **Nginx** (Reverse Proxy & Load Balancer)
-- **Docker** (Containerization)
+---
 
-## High-level architecture
+## 🏗️ URL Shortening Strategy
 
-<img width="640" alt="Screenshot 2024-11-05 at 14 39 46" src="https://github.com/user-attachments/assets/7dc65560-769a-440f-a8a0-f7c9ba00f48d">
+This project uses **ZooKeeper-based distributed token generation** instead of Base62 encoding.
 
+Example:
 
+Original URL:
+```
+https://leetcode.com/problems/two-sum
+```
+
+Generated Token:
+```
+tyDLAj
+```
+
+Short URL:
+```
+http://localhost/tyDLAj
+```
+
+### Advantages
+
+- ✅ Collision Free
+- ✅ Distributed System Friendly
+- ✅ No Sequential IDs
+- ✅ Scalable Across Multiple Servers
+
+---
+
+## 🏛️ System Architecture
+
+```text
+Client Browser
+       │
+       ▼
+Nginx Reverse Proxy
+       │
+       ▼
+Load Balancer
+       │
+ ┌─────┼─────┐
+ ▼     ▼     ▼
+Server Server Server
+  1      2      3
+       │
+       ▼
+     Redis
+       │
+       ▼
+    MongoDB
+       │
+       ▼
+   ZooKeeper
+```
+
+---
+
+## 🔄 URL Creation Flow
+
+```text
+User
+ ↓
+Submit URL
+ ↓
+Validate URL
+ ↓
+Generate Token (ZooKeeper)
+ ↓
+Store in MongoDB
+ ↓
+Cache in Redis
+ ↓
+Return Short URL
+```
+
+---
+
+## 🚦 URL Redirection Flow
+
+```text
+User Opens Short URL
+          ↓
+      Redis Check
+          ↓
+   Hit         Miss
+    ↓            ↓
+ Return      MongoDB
+    ↓            ↓
+ Save Analytics
+          ↓
+      Redirect
+```
+
+---
+
+## 📊 Analytics Dashboard
+
+Tracks:
+
+- 👥 Total Visitors
+- 🎯 Unique Visitors
+- 🌐 Unique Browsers
+- 📱 Unique Devices
+- 🌍 Country
+- 🏙️ City
+- 🕒 Timestamp
+- 📈 Click Count
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- React
+- TypeScript
+- Material UI
+- Redux Toolkit
+
+### Backend
+- Node.js
+- Fastify
+- TypeScript
+
+### Database
+- MongoDB
+- Mongoose
+
+### Cache
+- Redis
+
+### Authentication
+- JWT
+- bcrypt
+
+### Infrastructure
+- Docker
+- Nginx
+- ZooKeeper
+
+---
+
+## 🚀 Run Locally
+
+```bash
+git clone <repo-url>
+
+docker compose up --build
+```
+
+Application:
+
+```text
+Frontend: http://localhost
+Backend : http://localhost/api
+```
+
+---
+
+## 🔮 Future Improvements
+
+- QR Code Generation
+- Custom Short URLs
+- Analytics Charts
+- Cloud Deployment
+- Rate Limiting
