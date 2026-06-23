@@ -1,7 +1,7 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
-
+import rateLimit from '@fastify/rate-limit';
 import { connectToMongoDB } from './config/mongoose';
 import { connectToRedis } from './config/redis';
 import { connectToZookeeper } from './config/zookeeper';
@@ -17,8 +17,11 @@ const fastify = Fastify();
 // JWT Configuration
 fastify.register(fastifyJwt, {
   secret: 'my_super_secret_key',
+});//rate limiting
+fastify.register(rateLimit, {
+  max: 500,
+  timeWindow: '1 minute',
 });
-
 // Configure server
 fastify
   .register(fastifyCors)
